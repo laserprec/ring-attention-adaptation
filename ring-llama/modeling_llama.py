@@ -652,7 +652,7 @@ class LlamaRingFlashAttention(LlamaFlashAttention2):
 
             # cu_seqlens_q, cu_seqlens_k = cu_seq_lens
             # max_seqlen_in_batch_q, max_seqlen_in_batch_k = max_seq_lens
-
+            # print("USING VARLEN RING ATTN")
             #attn_output_unpad = flash_attn_varlen_qkvpacked_func(
             attn_output_unpad = ring_flash_attn_varlen_qkvpacked_func(
                 qkv,
@@ -665,6 +665,7 @@ class LlamaRingFlashAttention(LlamaFlashAttention2):
 
             attn_output = pad_input(attn_output_unpad, indices_q, batch_size, query_length)
         else:
+            # print("USING FIXED-LENGTH RING ATTN")
             #attn_output = flash_attn_qkvpacked_func(qkv, dropout_p=dropout, softmax_scale=softmax_scale, causal=causal)
             attn_output = ring_flash_attn_qkvpacked_func(qkv, dropout_p=dropout, softmax_scale=softmax_scale, causal=causal)
 
