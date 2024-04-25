@@ -65,12 +65,17 @@ def sizeof_fmt(num, suffix="B"):
     return f"{num:.1f}Yi{suffix}"
 
 def add_padding(input_chunks, tokenizer, world_size):
+    # Current length of each input chunk
+    current_length = input_chunks.shape[1]
+
+    # Calculate how much padding is needed to make the length a multiple of world_size
+    padding_needed = (world_size - current_length % world_size) % world_size
+
+    # Create a padding tensor of the required size
     pad_tensor = torch.tensor(
-        [int(tokenizer.pad_token_id)]
-        * (
-            input_chunks.shape[1] % (world_size)
-        ),
-    dtype=int).unsqueeze(0)
+        [tokenizer.pad_token_id] * padding_needed,
+        dtype=torch.int
+    ).unsqueeze(0)
     print("size of pad_tensor", pad_tensor.shape)
     return torch.cat([pad_tensor.int(), input_chunks.int()], dim=1)
 
@@ -109,6 +114,9 @@ def generate(
         print("size of input", tokenized_input.shape)
         tokenized_input = add_padding(tokenized_input, tokenizer, world_size)
         position_ids = torch.arange(tokenized_input.shape[1]).unsqueeze(0)
+        # ensure input is divisible by num_gpus
+        if tokenized_input.shape[1] % world_size != 0:
+            raise ValueError(f"Input tensor needs to be divisible by {world_size}. Current shape {tokenized_input.shape}")
         # break it up into chunks
         input_chunks = tokenized_input.chunk(chunks=world_size, dim=1)[rank]
         position_ids = position_ids.chunk(chunks=world_size, dim=1)[rank]
@@ -117,6 +125,7 @@ def generate(
         position_ids = position_ids.to(device)
 
         print("size of input chunk", input_chunks.shape)
+
         y = model(input_ids=input_chunks, position_ids=position_ids).logits
         print("size of output chunk", y.shape)
         gathered_logits = [torch.zeros_like(y) for _ in range(world_size)]
