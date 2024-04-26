@@ -15,7 +15,7 @@ from ring_flash_attn import ring_flash_attn_qkvpacked_func
 # NOTE: to run this code:
 # 1. cd research/ring-flash-attention && pip install -e .
 # 2. cd research/ring-attention-cuda-mode/ring-llama
-# 3. torchrun --nproc_per_node 4 main.py --context_window 32000 --quantized
+# 3. torchrun --nproc_per_node 4 forward.py --context_window 32000 --quantized
 
 def load_model(
     model_name: str,
@@ -122,7 +122,7 @@ def main(context_window, quantized):
     max_mem_allocated_before = torch.cuda.max_memory_allocated(device)
 
     # temporarily use dummy input (ensure shape is same for both devices)
-    length = 20000  # Set this to your desired length
+    length = context_window  # Set this to your desired length
     mod_value = 32000  # Set the upper limit for values (llama2 vocab size is 32k)
     tokenized_input = torch.arange(length) % mod_value
     tokenized_input = tokenized_input.unsqueeze(0)  # To match your original shape requirement
